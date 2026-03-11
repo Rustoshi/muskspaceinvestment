@@ -146,39 +146,35 @@ export function TransactionsTable({ transactions }: { transactions: any[] }) {
     );
 }
 
-// --- INVENTORY TABLE (MOCK) ---
+// --- INVENTORY TABLE ---
 export function InventoryTable({ initialInventory }: { initialInventory: any[] }) {
     return (
         <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl overflow-hidden mt-8">
             <div className="p-6 border-b border-white/[0.08] flex items-center justify-between">
-                <h3 className="text-sm font-bold tracking-widest text-white uppercase font-montserrat">Tesla Inventory</h3>
-                <button className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold tracking-widest uppercase transition-colors">
-                    <Plus className="w-4 h-4" /> Add Product
-                </button>
+                <h3 className="text-sm font-bold tracking-widest text-white uppercase font-montserrat">Inventory</h3>
+                <Link href="/admin/inventory" className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold tracking-widest uppercase transition-colors">
+                    Manage Inventory
+                </Link>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-white/[0.08] bg-black/50">
-                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">SKU</th>
-                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Model</th>
-                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Color</th>
-                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Price</th>
-                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase text-right">Action</th>
+                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">ID</th>
+                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Product</th>
+                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Category</th>
+                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Base Price</th>
                         </tr>
                     </thead>
                     <tbody>
                         {initialInventory.length === 0 ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-white/40 text-sm">No inventory listed.</td></tr>
+                            <tr><td colSpan={4} className="p-8 text-center text-white/40 text-sm">No inventory listed.</td></tr>
                         ) : initialInventory.map(item => (
                             <tr key={item._id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                                <td className="p-4 text-xs text-white/50 font-mono">{item.sku}</td>
-                                <td className="p-4 text-sm text-white font-medium">{item.model}</td>
-                                <td className="p-4 text-sm text-white/70">{item.color}</td>
-                                <td className="p-4 text-sm text-white font-mono">${item.price.toLocaleString()}</td>
-                                <td className="p-4 text-right">
-                                    <button className="text-xs font-bold uppercase tracking-wider text-red-500 hover:text-white transition-colors bg-red-500/10 hover:bg-red-500 px-3 py-1.5 rounded">Manage</button>
-                                </td>
+                                <td className="p-4 text-xs text-white/50 font-mono">{item._id?.slice(-8).toUpperCase()}</td>
+                                <td className="p-4 text-sm text-white font-medium">{item.name}</td>
+                                <td className="p-4 text-sm text-white/70">{item.category}</td>
+                                <td className="p-4 text-sm text-white font-mono">${(item.baseCashPrice || 0).toLocaleString()}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -188,12 +184,15 @@ export function InventoryTable({ initialInventory }: { initialInventory: any[] }
     );
 }
 
-// --- ORDERS TABLE (MOCK) ---
+// --- ORDERS TABLE ---
 export function OrdersTable({ initialOrders }: { initialOrders: any[] }) {
     return (
         <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl overflow-hidden mt-8 mb-16">
             <div className="p-6 border-b border-white/[0.08] flex items-center justify-between">
                 <h3 className="text-sm font-bold tracking-widest text-white uppercase font-montserrat">Pending Orders</h3>
+                <Link href="/admin/orders" className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold tracking-widest uppercase transition-colors">
+                    View All Orders
+                </Link>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -201,24 +200,20 @@ export function OrdersTable({ initialOrders }: { initialOrders: any[] }) {
                         <tr className="border-b border-white/[0.08] bg-black/50">
                             <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Order ID</th>
                             <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Customer</th>
-                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Vehicle</th>
+                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Item</th>
                             <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase">Status</th>
-                            <th className="p-4 text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {initialOrders.length === 0 ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-white/40 text-sm">No pending orders.</td></tr>
+                            <tr><td colSpan={4} className="p-8 text-center text-white/40 text-sm">No pending orders.</td></tr>
                         ) : initialOrders.map(item => (
                             <tr key={item._id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                                <td className="p-4 text-xs text-white/50 font-mono">{item.orderId}</td>
+                                <td className="p-4 text-xs text-white/50 font-mono">{item._id?.slice(-8).toUpperCase()}</td>
                                 <td className="p-4 text-sm text-white font-medium">{item.user?.firstName} {item.user?.lastName}</td>
-                                <td className="p-4 text-sm text-white/70">{item.product?.model}</td>
+                                <td className="p-4 text-sm text-white/70">{item.product?.name || item.product?.model}</td>
                                 <td className="p-4">
                                     <span className="text-[10px] uppercase tracking-wider font-bold text-yellow-400 bg-yellow-500/10 px-2 py-1 rounded">{item.status}</span>
-                                </td>
-                                <td className="p-4 text-right">
-                                    <button className="text-xs font-bold uppercase tracking-wider text-red-500 hover:text-white transition-colors bg-red-500/10 hover:bg-red-500 px-3 py-1.5 rounded">Update Status</button>
                                 </td>
                             </tr>
                         ))}

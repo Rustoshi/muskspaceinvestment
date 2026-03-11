@@ -530,20 +530,7 @@ export default function InventoryClient({ products }: { products: ProductItem[] 
                                 <button onClick={() => setShowCreateModal(false)} className="text-white/40 hover:text-white"><X className="w-5 h-5" /></button>
                             </div>
                             <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
-                                {/* Category Selection */}
-                                <div>
-                                    <label className={labelClasses}>Category *</label>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, category: "VEHICLE" }))}
-                                            className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-colors ${formData.category === "VEHICLE" ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10"}`}>
-                                            <Car className="w-4 h-4" /> Vehicle
-                                        </button>
-                                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, category: "ENERGY" }))}
-                                            className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-bold uppercase tracking-widest transition-colors ${formData.category === "ENERGY" ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" : "bg-white/5 text-white/40 border-white/10 hover:bg-white/10"}`}>
-                                            <Zap className="w-4 h-4" /> Energy
-                                        </button>
-                                    </div>
-                                </div>
+
 
                                 {/* General Fields */}
                                 <div className="grid grid-cols-2 gap-4">

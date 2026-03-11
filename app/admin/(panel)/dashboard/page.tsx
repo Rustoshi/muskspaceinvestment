@@ -4,8 +4,8 @@ import MetricCard from "@/components/admin/MetricCard";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
 import Transaction from "@/models/Transaction";
-import Product from "@/models/Product";
-import Order from "@/models/Order";
+import ShopProduct from "@/models/ShopProduct";
+import ShopOrder from "@/models/ShopOrder";
 import { QuickActions, UsersTable, TransactionsTable, InventoryTable, OrdersTable } from "@/components/admin/DashboardTables";
 
 export default async function AdminDashboard() {
@@ -21,8 +21,8 @@ export default async function AdminDashboard() {
     const pendingKycCount = await User.countDocuments({ kycStatus: 'pending' });
 
     // Real metrics for shopping
-    const totalInventoryCount = await Product.countDocuments();
-    const pendingOrdersCount = await Order.countDocuments({ status: { $in: ['Pending', 'Processing', 'Awaiting Payment'] } });
+    const totalInventoryCount = await ShopProduct.countDocuments();
+    const pendingOrdersCount = await ShopOrder.countDocuments({ orderStatus: 'PENDING' });
 
     // 2. Fetch Tabular Data
     const rawUsers = await User.find({ role: 'user' }).sort({ createdAt: -1 }).limit(100).lean();
@@ -38,28 +38,44 @@ export default async function AdminDashboard() {
         createdAt: t.createdAt?.toISOString()
     }));
 
-    const rawInventory = await Product.find().sort({ createdAt: -1 }).limit(10).lean();
-    const serializedInventory = rawInventory.map(p => ({
+    const rawInventory = await ShopProduct.find().sort({ createdAt: -1 }).limit(10).lean();
+    const serializedInventory = rawInventory.map((p: any) => ({
         ...p,
-        _id: p._id?.toString(),
-        createdAt: p.createdAt?.toISOString(),
-        updatedAt: p.updatedAt?.toISOString()
+        _id: p._id.toString(),
+        name: p.name || "",
+        slug: p.slug || "",
+        category: p.category || "VEHICLE",
+        baseCashPrice: p.baseCashPrice || 0,
+        createdAt: p.createdAt?.toISOString() || "",
+        updatedAt: p.updatedAt?.toISOString() || ""
     }));
 
-    const rawOrders = await Order.find({ status: { $in: ['Pending', 'Processing', 'Awaiting Payment'] } })
-        .populate('user', 'firstName lastName email')
-        .populate('product', 'model')
+    const rawOrders = await ShopOrder.find({ orderStatus: 'PENDING' })
+        .populate("productId", "name slug category heroImage")
+        .populate("userId", "firstName lastName email")
         .sort({ createdAt: -1 })
         .limit(10)
         .lean();
 
     const serializedOrders = rawOrders.map((o: any) => ({
         ...o,
-        _id: o._id?.toString(),
-        user: o.user ? { firstName: o.user.firstName, lastName: o.user.lastName, email: o.user.email } : null,
-        product: o.product ? { model: o.product.model } : null,
-        createdAt: o.createdAt?.toISOString(),
-        updatedAt: o.updatedAt?.toISOString()
+        _id: o._id.toString(),
+        user: o.userId ? {
+            _id: o.userId._id?.toString() || "",
+            firstName: o.userId.firstName || "",
+            lastName: o.userId.lastName || "",
+            name: `${o.userId.firstName || ""} ${o.userId.lastName || ""}`.trim() || "Unknown",
+            email: o.userId.email || "",
+        } : null,
+        product: o.productId ? {
+            _id: o.productId._id?.toString() || "",
+            name: o.productId.name || "Unknown Product",
+            model: o.productId.name || "Unknown Product", // Added for backward compatibility 
+            slug: o.productId.slug || "",
+        } : null,
+        status: o.orderStatus, // Map orderStatus to status for the component
+        createdAt: o.createdAt?.toISOString() || "",
+        updatedAt: o.updatedAt?.toISOString() || ""
     }));
 
     return (
