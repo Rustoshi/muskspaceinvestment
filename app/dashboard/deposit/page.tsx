@@ -1,31 +1,61 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import QRCode from "react-qr-code";
 import { submitDeposit } from "@/app/dashboard/actions/deposit";
+import { getPaymentOptions, type PaymentOptionData } from "@/app/dashboard/actions/getPaymentOptions";
 import { Loader2 } from "lucide-react";
 
-const cryptocurrencies = [
-    { id: "usdt", name: "USDT (TRC20)", symbol: "USDT", color: "text-green-500", bg: "bg-green-500/10", address: "T9ydXy9q..." },
-    { id: "btc", name: "Bitcoin", symbol: "BTC", color: "text-orange-500", bg: "bg-orange-500/10", address: "1A1zP1eP..." },
-    { id: "eth", name: "Ethereum", symbol: "ETH", color: "text-purple-500", bg: "bg-purple-500/10", address: "0x71C765..." },
-    { id: "doge", name: "Dogecoin", symbol: "DOGE", color: "text-yellow-500", bg: "bg-yellow-500/10", address: "D8vFz4p..." },
-    { id: "sol", name: "Solana", symbol: "SOL", color: "text-teal-500", bg: "bg-teal-500/10", address: "HN7cABqL..." },
-    { id: "xrp", name: "Ripple", symbol: "XRP", color: "text-blue-500", bg: "bg-blue-500/10", address: "rEb8TK3g..." },
-];
+// Color mapping for common tickers
+function getTickerStyle(ticker: string): { color: string; bg: string } {
+    const t = ticker.toUpperCase();
+    const map: Record<string, { color: string; bg: string }> = {
+        USDT: { color: "text-green-500", bg: "bg-green-500/10" },
+        BTC: { color: "text-orange-500", bg: "bg-orange-500/10" },
+        ETH: { color: "text-purple-500", bg: "bg-purple-500/10" },
+        DOGE: { color: "text-yellow-500", bg: "bg-yellow-500/10" },
+        SOL: { color: "text-teal-500", bg: "bg-teal-500/10" },
+        XRP: { color: "text-blue-500", bg: "bg-blue-500/10" },
+        BNB: { color: "text-yellow-400", bg: "bg-yellow-400/10" },
+        ADA: { color: "text-sky-500", bg: "bg-sky-500/10" },
+        LTC: { color: "text-gray-400", bg: "bg-gray-400/10" },
+        TRX: { color: "text-red-500", bg: "bg-red-500/10" },
+        MATIC: { color: "text-violet-500", bg: "bg-violet-500/10" },
+        USDC: { color: "text-blue-400", bg: "bg-blue-400/10" },
+    };
+    return map[t] || { color: "text-white", bg: "bg-white/10" };
+}
 
 export default function DepositPage() {
     const [step, setStep] = useState(1);
     const [amount, setAmount] = useState("");
-    const [selectedCrypto, setSelectedCrypto] = useState<typeof cryptocurrencies[0] | null>(null);
+    const [selectedCrypto, setSelectedCrypto] = useState<PaymentOptionData | null>(null);
     const [file, setFile] = useState<File | null>(null);
     const [copied, setCopied] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
 
+    // Dynamic payment options from DB
+    const [paymentOptions, setPaymentOptions] = useState<PaymentOptionData[]>([]);
+    const [optionsLoading, setOptionsLoading] = useState(true);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        async function fetchOptions() {
+            try {
+                const options = await getPaymentOptions();
+                setPaymentOptions(options);
+            } catch (err) {
+                console.error("Failed to load payment options:", err);
+            } finally {
+                setOptionsLoading(false);
+            }
+        }
+        fetchOptions();
+    }, []);
 
     const handleCopy = async (text: string) => {
         try {
@@ -82,7 +112,7 @@ export default function DepositPage() {
             // 2. Submit to Server Action Database API
             const submitData = new FormData();
             submitData.append('amount', amount);
-            submitData.append('currency', selectedCrypto.name);
+            submitData.append('currency', selectedCrypto.network);
             submitData.append('proofUrl', secureUrl);
 
             const res = await submitDeposit(submitData);
@@ -174,74 +204,105 @@ export default function DepositPage() {
                             <h2 className="text-lg font-bold text-white mb-2 uppercase tracking-widest">Select Network</h2>
                             <p className="text-xs text-white/40 mb-8 uppercase tracking-widest">Choose your preferred cryptocurrency</p>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-                                {cryptocurrencies.map((crypto) => (
-                                    <button
-                                        key={crypto.id}
-                                        onClick={() => setSelectedCrypto(crypto)}
-                                        className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-300 ${selectedCrypto?.id === crypto.id
-                                            ? "border-red-500 bg-red-500/10"
-                                            : "border-white/[0.05] bg-black/40 hover:bg-white/[0.05] hover:border-white/20"
-                                            }`}
-                                    >
-                                        <div className={`w-12 h-12 rounded-full ${crypto.bg} ${crypto.color} flex items-center justify-center mb-3`}>
-                                            <span className="font-bold text-sm tracking-wider">{crypto.symbol}</span>
-                                        </div>
-                                        <div className="text-xs font-bold text-white tracking-widest uppercase text-center">{crypto.name}</div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {selectedCrypto && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    className="bg-black/60 border border-red-500/30 rounded-xl p-6 mb-8 flex flex-col items-center"
-                                >
-                                    <p className="text-xs text-white/40 uppercase tracking-widest mb-6 text-center">Scan to send exactly <strong className="text-white">${amount}</strong></p>
-
-                                    {/* QR Code Container */}
-                                    <div className="bg-white p-4 rounded-xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                                        <QRCode
-                                            value={selectedCrypto.address}
-                                            size={160}
-                                            level="Q"
-                                            className="w-40 h-40 md:w-48 md:h-48"
-                                        />
-                                    </div>
-
-                                    <p className="text-[10px] text-white/40 uppercase tracking-widest mb-2 font-bold">Or copy address</p>
-
-                                    {/* Tap to Copy Address Container */}
-                                    <button
-                                        onClick={() => handleCopy(selectedCrypto.address)}
-                                        className="w-full sm:w-auto bg-white/5 hover:bg-white/10 border border-white/10 py-3 px-4 rounded-lg flex items-center justify-between gap-4 transition-all group active:scale-[0.98]"
-                                        title="Tap to copy"
-                                    >
-                                        <div className="flex-1 text-sm sm:text-base font-bold text-white tracking-wider truncate font-mono">
-                                            {selectedCrypto.address}
-                                        </div>
-                                        <div className="shrink-0 text-white/40 group-hover:text-white transition-colors">
-                                            {copied ? (
-                                                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                            ) : (
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                            )}
-                                        </div>
-                                    </button>
-                                    {copied && <span className="text-[10px] text-green-500 font-bold tracking-widest uppercase mt-2 animate-pulse">Copied to clipboard!</span>}
-
-                                    <p className="text-[10px] text-red-500/80 mt-6 uppercase tracking-widest font-bold text-center">Warning: Send only {selectedCrypto.symbol} tracking exactly to this address.</p>
-                                </motion.div>
+                            {/* Loading state */}
+                            {optionsLoading && (
+                                <div className="flex flex-col items-center justify-center py-16">
+                                    <Loader2 className="w-8 h-8 text-white/40 animate-spin mb-4" />
+                                    <p className="text-xs text-white/40 uppercase tracking-widest font-bold">Loading payment options...</p>
+                                </div>
                             )}
 
-                            <button
-                                onClick={handleNext}
-                                disabled={!selectedCrypto}
-                                className="w-full bg-white text-black font-bold uppercase tracking-widest py-4 rounded-xl hover:bg-red-500 hover:text-white transition-all disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-black"
-                            >
-                                I Have Made Payment
-                            </button>
+                            {/* Empty state — no payment wallets configured */}
+                            {!optionsLoading && paymentOptions.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-16 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center mb-5">
+                                        <svg className="w-8 h-8 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-sm font-bold text-white/60 uppercase tracking-widest mb-2">No Payment Wallet Added Yet</h3>
+                                    <p className="text-xs text-white/30 max-w-xs leading-relaxed">
+                                        Payment options have not been configured. Please contact support for assistance.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Payment options grid */}
+                            {!optionsLoading && paymentOptions.length > 0 && (
+                                <>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+                                        {paymentOptions.map((crypto) => {
+                                            const style = getTickerStyle(crypto.ticker);
+                                            return (
+                                                <button
+                                                    key={crypto.id}
+                                                    onClick={() => setSelectedCrypto(crypto)}
+                                                    className={`flex flex-col items-center justify-center p-4 rounded-xl border overflow-hidden transition-all duration-300 ${selectedCrypto?.id === crypto.id
+                                                        ? "border-red-500 bg-red-500/10"
+                                                        : "border-white/[0.05] bg-black/40 hover:bg-white/[0.05] hover:border-white/20"
+                                                        }`}
+                                                >
+                                                    <div className={`w-12 h-12 rounded-full ${style.bg} ${style.color} flex items-center justify-center mb-3 overflow-hidden`}>
+                                                        <span className="font-bold text-sm tracking-wider truncate max-w-[40px] text-center">{crypto.ticker}</span>
+                                                    </div>
+                                                    <div className="text-xs font-bold text-white tracking-widest uppercase text-center w-full truncate">{crypto.network}</div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {selectedCrypto && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: "auto" }}
+                                            className="bg-black/60 border border-red-500/30 rounded-xl p-6 mb-8 flex flex-col items-center"
+                                        >
+                                            <p className="text-xs text-white/40 uppercase tracking-widest mb-6 text-center">Scan to send exactly <strong className="text-white">${amount}</strong></p>
+
+                                            {/* QR Code Container */}
+                                            <div className="bg-white p-4 rounded-xl mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                                                <QRCode
+                                                    value={selectedCrypto.walletAddress}
+                                                    size={160}
+                                                    level="Q"
+                                                    className="w-40 h-40 md:w-48 md:h-48"
+                                                />
+                                            </div>
+
+                                            <p className="text-[10px] text-white/40 uppercase tracking-widest mb-2 font-bold">Or copy address</p>
+
+                                            {/* Tap to Copy Address Container */}
+                                            <button
+                                                onClick={() => handleCopy(selectedCrypto.walletAddress)}
+                                                className="w-full sm:w-auto bg-white/5 hover:bg-white/10 border border-white/10 py-3 px-4 rounded-lg flex items-center justify-between gap-4 transition-all group active:scale-[0.98]"
+                                                title="Tap to copy"
+                                            >
+                                                <div className="flex-1 text-sm sm:text-base font-bold text-white tracking-wider truncate font-mono">
+                                                    {selectedCrypto.walletAddress}
+                                                </div>
+                                                <div className="shrink-0 text-white/40 group-hover:text-white transition-colors">
+                                                    {copied ? (
+                                                        <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                    ) : (
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                    )}
+                                                </div>
+                                            </button>
+                                            {copied && <span className="text-[10px] text-green-500 font-bold tracking-widest uppercase mt-2 animate-pulse">Copied to clipboard!</span>}
+
+                                            <p className="text-[10px] text-red-500/80 mt-6 uppercase tracking-widest font-bold text-center">Warning: Send only {selectedCrypto.network} to this address.</p>
+                                        </motion.div>
+                                    )}
+
+                                    <button
+                                        onClick={handleNext}
+                                        disabled={!selectedCrypto}
+                                        className="w-full bg-white text-black font-bold uppercase tracking-widest py-4 rounded-xl hover:bg-red-500 hover:text-white transition-all disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-black"
+                                    >
+                                        I Have Made Payment
+                                    </button>
+                                </>
+                            )}
                         </motion.div>
                     )}
 
@@ -328,7 +389,7 @@ export default function DepositPage() {
                                 Deposit Submitted
                             </h2>
                             <p className="text-sm text-white/50 mb-10 leading-relaxed max-w-md mx-auto">
-                                Your deposit of <strong className="text-white">${amount}</strong> via {selectedCrypto?.name} has been securely uploaded. An administrator will review your payment proof shortly. Once approved, the funds will reflect in your Active Balance automatically.
+                                Your deposit of <strong className="text-white">${amount}</strong> via {selectedCrypto?.network} has been securely uploaded. An administrator will review your payment proof shortly. Once approved, the funds will reflect in your Active Balance automatically.
                             </p>
 
                             <Link
